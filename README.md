@@ -1,4 +1,4 @@
-````md
+
 # AITestCaseGen
 
 AI-powered test case management toolkit for Jira Zephyr Scale — generate, import, update, delete, link, and Generate test cases using HuggingFace and Ollama AI models.
@@ -259,4 +259,4 @@ python src/create_excel_templates.py
 | `.docx` | `python-docx` |
 | `.pdf` | `pdfplumber` |
 | `.txt` | built-in |
-````
+
