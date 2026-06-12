@@ -371,3 +371,272 @@ class TestCaseGenerator:
 
         Args:
             requirement : Plain-text requirement string.
+            pipe        : Loaded HuggingFace pipeline object.
+
+        Returns:
+            List of test case dicts.
+        """
+        print(f"  Generating with HuggingFace ({self.model})...")
+        prompt = PROMPT_TEMPLATE.format(count=self.count, requirement=requirement)
+        try:
+            out      = pipe(prompt, max_new_tokens=512, do_sample=False)
+            raw_text = out[0]["generated_text"].strip() if out else ""
+            return self._parse_json_response(raw_text)
+        except Exception as e:
+            print(f"  [WARN] HuggingFace generation failed: {e} — falling back to rule-based.")
+            return self._generate_rulebased(requirement)
+
+    def _generate_ollama(self, requirement: str) -> list:
+        """
+        Generate test cases by calling the local Ollama REST API.
+        Falls back to rule-based generation on network failure.
+
+        Args:
+            requirement : Plain-text requirement string.
+
+        Returns:
+            List of test case dicts.
+        """
+        prompt  = PROMPT_TEMPLATE.format(count=self.count, requirement=requirement)
+        payload = json.dumps({"model": self.model, "prompt": prompt, "stream": False}).encode("utf-8")
+        req = urllib.request.Request(
+            f"{OLLAMA_BASE_URL}/api/generate",
+            data=payload, headers={"Content-Type": "application/json"}, method="POST",
+        )
+        print(f"  Sending to Ollama ({self.model}) — please wait...")
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                raw_text = json.loads(resp.read().decode()).get("response", "").strip()
+        except urllib.error.URLError as e:
+            print(f"  [WARN] Ollama request failed: {e} — falling back to rule-based.")
+            return self._generate_rulebased(requirement)
+        return self._parse_json_response(raw_text)
+
+    def _generate_rulebased(self, requirement: str) -> list:
+        """
+        Generate test cases using a deterministic rule-based engine.
+        Used as the final fallback when no AI engine is available.
+        Cycles through Positive, Negative, Boundary, Smoke, Regression, Security,
+        and Performance test patterns.
+
+        Args:
+            requirement : Plain-text requirement string.
+
+        Returns:
+            List of test case dicts.
+        """
+        print("  Generating with rule-based engine...")
+        lines = [l.strip() for l in requirement.split("\n") if len(l.strip()) > 15]
+        if not lines:
+            lines = [requirement[:100]]
+        keywords = [
+            ("Positive",   "Verify {topic} with valid input",        "Functional", "High"),
+            ("Negative",   "Verify {topic} with invalid input",       "Functional", "High"),
+            ("Boundary",   "Verify {topic} at boundary values",       "Boundary",   "Medium"),
+            ("Empty input","Verify {topic} with empty/null input",    "Negative",   "Medium"),
+            ("Smoke",      "Smoke test for {topic}",                  "Smoke",      "High"),
+            ("Regression", "Regression test for {topic}",             "Regression", "Medium"),
+            ("Security",   "Verify {topic} access control",           "Functional", "Low"),
+            ("Performance","Verify {topic} response time",            "Functional", "Low"),
+        ]
+        test_cases = []
+        for i in range(self.count):
+            line  = lines[i % len(lines)]
+            topic = line[:70]
+            ktype = keywords[i % len(keywords)]
+            test_cases.append({
+                "Summary"        : ktype[1].format(topic=topic),
+                "Objective"      : f"{ktype[0]} test — {topic}",
+                "Priority"       : ktype[3],
+                "Precondition"   : "System is running and user is authenticated",
+                "Test Step"      : f"1. Navigate to the relevant module\n2. Perform action: {topic}\n3. Observe the result",
+                "Test Data"      : "As per requirement",
+                "Expected Result": f"System behaves as expected for: {topic}",
+                "Type of Test"   : ktype[2],
+                "Traceability"   : "",
+            })
+        return test_cases
+
+    def _parse_json_response(self, text: str) -> list:
+        """
+        Parse and extract a JSON array from a raw AI model response string.
+        Locates the first '[' and last ']' to isolate the array even if
+        the model returns extra prose around it.
+
+        Args:
+            text : Raw text response from the AI model.
+
+        Returns:
+            Parsed list of test case dicts.
+
+        Raises:
+            SystemExit if no valid JSON array is found.
+        """
+        start = text.find("[")
+        end   = text.rfind("]") + 1
+        if start == -1 or end == 0:
+            print("[ERROR] Model did not return a valid JSON array.")
+            print(f"  Raw response:\n{text[:500]}")
+            sys.exit(1)
+        try:
+            return json.loads(text[start:end])
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] Failed to parse JSON from model response: {e}")
+            print(f"  Raw:\n{text[:500]}")
+            sys.exit(1)
+
+    # — Write Excel ————————————————————————————————————————————
+
+    def write_xlsx(self, test_cases: list, traceability: str = "", append: bool = False):
+        """
+        Write generated test cases to the output Excel file.
+        Creates a new file or appends to an existing one based on the append flag.
+
+        Args:
+            test_cases   : List of test case dicts to write.
+            traceability : Optional Jira issue key to set as traceability for all rows.
+            append       : If True and the output file exists, append rows instead of overwriting.
+        """
+        header_font  = Font(bold=True, color="FFFFFF")
+        header_fill  = PatternFill(fill_type="solid", fgColor="0052CC")
+        header_align = Alignment(horizontal="center", vertical="center")
+
+        if append and os.path.exists(self.output):
+            wb = openpyxl.load_workbook(self.output)
+            ws = wb.active
+        else:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Generated Test Cases"
+            for col_idx, col_name in enumerate(HEADERS, 1):
+                cell = ws.cell(row=1, column=col_idx, value=col_name)
+                cell.font      = header_font
+                cell.fill      = header_fill
+                cell.alignment = header_align
+
+        for tc in test_cases:
+            ws.append([
+                self.folder,
+                tc.get("Summary", ""),
+                tc.get("Objective", ""),
+                "",
+                "",
+                "",
+                tc.get("Priority", "Medium"),
+                tc.get("Precondition", ""),
+                tc.get("Test Step", ""),
+                tc.get("Test Data", ""),
+                tc.get("Expected Result", ""),
+                traceability or tc.get("Traceability", ""),
+                tc.get("Type of Test", "Functional"),
+                "Manual",
+                "",
+            ])
+
+        for col in ws.columns:
+            max_len = max((len(str(cell.value or "")) for cell in col), default=10)
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 50)
+
+        os.makedirs(os.path.dirname(os.path.abspath(self.output)), exist_ok=True)
+        wb.save(self.output)
+        print(f"\n  ✅ {len(test_cases)} test case(s) written to: {os.path.abspath(self.output)}")
+        print("  Run import:  python -m test.import_testcases")
+
+    # — Run ————————————————————————————————————————————
+
+    def run(self, issue: str = "", text: str = "", file: str = "", input_folder: str = "", confluence: str = ""):
+        """
+        Main entry point — collects requirements from all specified sources,
+        generates test cases for each, and writes them to the output Excel file.
+
+        Args:
+            issue        : Jira issue key to fetch requirement from.
+            text         : Inline requirement text.
+            file         : Path to a single .txt requirement file.
+            input_folder : Path to a folder containing requirement files.
+            confluence   : Confluence page ID or URL (comma-separated for multiple).
+        """
+        print("=" * 65)
+        print("  Jira Zephyr Scale — AI Test Case Generator (Ollama)")
+        print("=" * 65)
+        print(f"  Model  : {self.model}")
+        print(f"  Count  : {self.count}")
+        print(f"  Folder : {self.folder}")
+        print(f"  HF URL : {self._cfg.hf_endpoint or HF_ENDPOINT_DEFAULT}")
+        print("=" * 65 + "\n")
+
+        sources = []  # list of (requirement_text, traceability)
+
+        if issue:
+            req_text = self.fetch_jira_issue(issue)
+            sources.append((req_text, issue))
+
+        if confluence:
+            for page_ref in [p.strip() for p in confluence.split(",") if p.strip()]:
+                title, req_text = self.fetch_confluence_page(page_ref)
+                sources.append((req_text, title))
+
+        if input_folder:
+            files = self.load_folder(input_folder)
+            for fname, req_text in files:
+                print(f"  Loaded file: {fname}")
+                sources.append((req_text, ""))
+
+        if file:
+            req_text = self.load_text_file(file)
+            sources.append((req_text, ""))
+
+        if text:
+            sources.append((text.strip(), ""))
+
+        if not sources:
+            print("[ERROR] Provide at least one of: --issue, --input-folder, --file, --text, --confluence.")
+            sys.exit(1)
+
+        all_test_cases = []
+        total_written  = 0
+
+        for idx, (requirement, traceability) in enumerate(sources):
+            if not requirement:
+                continue
+            label = traceability or f"source {idx + 1}"
+            print(f"\n --- Generating for: {label} ---")
+            print(f"  Requirement preview: {requirement[:120]}...\n")
+
+            test_cases = self.generate(requirement)
+            print(f"  Generated {len(test_cases)} test case(s)")
+            for i, tc in enumerate(test_cases, 1):
+                print(f"    [{i}] {tc.get('Summary', '(no summary)')}")
+
+            append = (idx > 0) or (total_written > 0)
+            self.write_xlsx(test_cases, traceability, append=append)
+            total_written += len(test_cases)
+
+        print(f"\n  Total test cases written: {total_written}")
+        print("  Run import:  python -m test.import_testcases")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Generate test cases using Ollama AI and export to Excel"
+    )
+    parser.add_argument('--issue',        default="", help="Jira issue key (e.g. PROJECT-1234)")
+    parser.add_argument('--input-folder', default="", dest='input_folder', help="Folder with .txt requirement files")
+    parser.add_argument('--file',         default="", help="Single .txt requirements file")
+    parser.add_argument('--text',         default="", help="Requirement text inline")
+    parser.add_argument('--confluence',   default="", help="Confluence page ID or URL (comma-separated for multiple)")
+    parser.add_argument('--model',        default=DEFAULT_MODEL, help=f"Ollama model (default: {DEFAULT_MODEL})")
+    parser.add_argument('--count',        type=int, default=DEFAULT_COUNT, help=f"Test cases per source (default: {DEFAULT_COUNT})")
+    parser.add_argument('--folder',       default="/Generated", help="Zephyr folder path (default: /Generated)")
+    parser.add_argument('--output',       default="", help="Output Excel path (default: resources/import_test_case.xlsx)")
+
+    args = parser.parse_args()
+    if not any([args.issue, args.input_folder, args.file, args.text, args.confluence]):
+        parser.error("Provide at least one of: --issue, --input-folder, --file, --text, --confluence")
+
+    TestCaseGenerator(
+        model=args.model,
+        count=args.count,
+        folder=args.folder,
+        output=args.output,
+    ).run(issue=args.issue, text=args.text, file=args.file, input_folder=args.input_folder, confluence=args.confluence)
