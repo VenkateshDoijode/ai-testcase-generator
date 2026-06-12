@@ -1,0 +1,6 @@
+```bat
+@echo off
+set PYTHONPATH=src
+python -m test.import_testcases %*
+pause
+```
