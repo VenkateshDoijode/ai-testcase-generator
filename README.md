@@ -1,17 +1,42 @@
+<div align="center">
 
-# AITestCaseGen
+# 🧪 AITestCaseGen
 
-AI-powered test case management toolkit for Jira Zephyr Scale. Generate test cases (positive, negative, edge) from Jira issues, Confluence pages, or documents using HuggingFace/Ollama LLMs — then import, update, delete, link, and manage execution cycles via the Zephyr Scale REST API.
+**AI-powered test case management toolkit for Jira Zephyr Scale**
+
+Generate, import, update, link, and report on test cases — fully automated, with or without cloud AI.
+
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Zephyr Scale](https://img.shields.io/badge/Zephyr-Scale-orange.svg)](https://www.atlassian.com/software/jira/zephyr)
+[![HuggingFace](https://img.shields.io/badge/AI-HuggingFace%20%7C%20Ollama-yellow.svg)](https://huggingface.co/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
+
+</div>
 
 ---
 
-## AI Test Case Generator
+## 🚀 Why AITestCaseGen?
 
-The generator uses **HuggingFace Transformers** with models served from your configured Artifactory mirror or HuggingFace Hub directly.
+Writing test cases manually from requirements is one of the biggest time sinks in QA. **AITestCaseGen** reads your requirements — from Jira, Confluence, documents, or plain text — and generates structured positive, negative, and edge-case test cases, then pushes them directly into Zephyr Scale.
 
-### AI Engine Priority
+It's not just a generator. It's a **full test case lifecycle CLI**:
 
-The script automatically picks the best available engine:
+| | |
+|---|---|
+| 🧠 **Generate** | Create test cases from Jira issues, Confluence pages, docs, or text |
+| 📥 **Import** | Push generated cases directly into Zephyr Scale |
+| ✏️ **Update** | Bulk-edit existing test cases |
+| 🔗 **Link** | Connect test cases to Jira issues |
+| 🗑️ **Delete** | Remove test cases (with dry-run safety) |
+| 📤 **Export** | Pull existing cases out of Zephyr |
+| 🔄 **Test Cycles** | Update execution results in bulk |
+
+---
+
+## 🤖 AI Engine Priority
+
+The script automatically picks the best available engine — **zero config required**:
 
 | Priority | Engine | Condition |
 |---|---|---|
@@ -19,33 +44,71 @@ The script automatically picks the best available engine:
 | 2 | **Ollama** | Ollama installed and running locally |
 | 3 | **Rule-based** | Always works — no AI needed |
 
----
-## Why This Is Different
- 
-Most "AI test case generator" tools are tightly coupled to one model provider — if your API key runs out, the network is offline, or your org blocks cloud LLM calls, the tool simply stops working. This toolkit is built around **graceful degradation**:
- 
-- **No hard dependency on a paid API.** HuggingFace models can run via your Artifactory mirror or locally; Ollama runs fully offline; and the rule-based engine guarantees the script *never fails outright*, even with zero AI infrastructure available.
-- **Enterprise-friendly by default.** Many QA teams work in locked-down environments without internet access to OpenAI/Anthropic APIs. This tool was designed for that reality — it works air-gapped via Ollama or an internal model mirror.
-- **End-to-end lifecycle, not just generation.** Most generator tools stop at "produce some test cases." This one generates *and* imports, updates, deletes, links to Jira, exports, and updates execution cycles — directly via the Zephyr Scale REST API, so generated cases don't sit in a spreadsheet waiting for manual entry.
-- **Multi-source input.** Jira issues, Confluence pages, folders of docs (.docx/.pdf/.txt), or raw text — all feed the same pipeline, so it fits into however your team actually documents requirements.
-## Comparison with Similar Approaches
- 
-| Capability | This Toolkit | ChatGPT / Copy-Paste Prompting | Commercial Zephyr AI Add-ons |
-|---|---|---|---|
-| Works offline / air-gapped | ✅ via Ollama or local model | ❌ requires cloud API | ❌ usually cloud-only |
-| No paid API key required | ✅ rule-based fallback always works | ❌ needs ChatGPT/API subscription | ❌ licensed add-on cost |
-| Direct Zephyr Scale integration | ✅ generate → import → update → link → export, all via API | ❌ manual copy-paste into Zephyr | ✅ but locked to vendor's UI |
-| Multi-source input (Jira, Confluence, docs, text) | ✅ all in one pipeline | ⚠️ manual, one source at a time | ⚠️ varies, often limited |
-| Full test cycle execution updates | ✅ bulk update via CSV/Excel | ❌ not supported | ⚠️ vendor-dependent |
-| Open source / customizable | ✅ MIT-style, edit anything | N/A | ❌ closed source |
-| CI/CD friendly (CLI-based) | ✅ scriptable, no UI needed | ❌ manual workflow | ⚠️ varies |
-| Cost | Free | Subscription cost | License/subscription cost |
+This means the tool **never hard-fails** — even with no internet, no API key, and no GPU.
+
 ---
 
-## Prerequisites
+## ✨ Why This Is Different
+
+Most "AI test case generator" tools are tightly coupled to a single cloud provider — if your API key expires or your org blocks external LLM calls, the tool stops working entirely. AITestCaseGen is built around **graceful degradation**:
+
+- **No hard dependency on a paid API** — HuggingFace models run via your Artifactory mirror or locally, Ollama runs fully offline, and the rule-based engine guarantees the script keeps working even with zero AI infrastructure.
+- **Enterprise-friendly by default** — designed for locked-down environments with no access to OpenAI/Anthropic APIs; works fully air-gapped.
+- **End-to-end lifecycle, not just generation** — generates *and* imports, updates, deletes, links, exports, and updates test cycle executions directly via the Zephyr Scale REST API.
+- **Multi-source input** — Jira issues, Confluence pages, document folders (`.docx` / `.pdf` / `.txt`), or raw text all feed the same pipeline.
+
+---
+
+## 📊 Comparison with Similar Approaches
+
+| Capability | AITestCaseGen | ChatGPT / Copy-Paste | Commercial Zephyr AI Add-ons |
+|---|---|---|---|
+| Works offline / air-gapped | ✅ Ollama or local model | ❌ Cloud API required | ❌ Usually cloud-only |
+| No paid API key required | ✅ Rule-based fallback | ❌ Subscription needed | ❌ License cost |
+| Direct Zephyr Scale integration | ✅ Full API pipeline | ❌ Manual copy-paste | ✅ Vendor UI only |
+| Multi-source input | ✅ Jira, Confluence, docs, text | ⚠️ One source at a time | ⚠️ Often limited |
+| Bulk test cycle updates | ✅ CSV/Excel bulk update | ❌ Not supported | ⚠️ Vendor-dependent |
+| Open source & customizable | ✅ Edit anything | N/A | ❌ Closed source |
+| CI/CD friendly | ✅ Pure CLI | ❌ Manual workflow | ⚠️ Varies |
+| Cost | **Free** | Subscription | License/subscription |
+
+> **The core differentiator:** AI generation is just one stage of a connected pipeline — generation, Jira/Zephyr sync, and execution reporting all flow together instead of ending at "here's some text, paste it yourself."
+
+---
+
+## 📁 Project Structure
+
+```
+AITestCaseGen/
+├── resources/
+│   ├── config.ini                    # Jira credentials and settings
+│   ├── import_test_case.xlsx         # Input for import / output of AI generator
+│   ├── update_test_case.xlsx         # Input for update script
+│   ├── delete_Test_case.xlsx         # Input for delete script
+│   └── update_test_cycle.xlsx        # Input for test cycle update
+├── src/
+│   ├── main/
+│   │   ├── config.py                 # Reads config.ini
+│   │   └── jira_client.py            # Jira / Zephyr Scale REST API client
+│   └── test/
+│       ├── generate_tc_via_AI.py     # AI test case generator
+│       ├── import_testcases.py       # Import test cases to Zephyr Scale
+│       ├── update_testcases.py       # Update existing test cases
+│       ├── delete_testcases.py       # Delete test cases
+│       ├── link_testcases_to_jira.py # Link test cases to Jira issues
+│       ├── export_test_cases.py      # Export test cases from Zephyr
+│       ├── project_info.py           # Display Jira project information
+│       ├── update_test_cycle.py      # Update test cycle execution results
+│       └── create_excel_templates.py # Generate blank Excel input templates
+└── requirements.txt
+```
+
+---
+
+## ⚙️ Prerequisites
 
 - **Python 3.10+**
-- Install all dependencies:
+- Install dependencies:
 
 ```powershell
 pip3 install -r requirements.txt
@@ -54,7 +117,7 @@ pip3 install transformers accelerate huggingface_hub
 
 ---
 
-## Configuration
+## 🔧 Configuration
 
 Edit `resources/config.ini`:
 
@@ -78,11 +141,11 @@ type_of_test      = Regression Test
 automation_status = Manual
 ```
 
-> `config.ini` is in `.gitignore` — credentials are never committed to git.
+> 🔒 `config.ini` is in `.gitignore` — credentials are never committed to git.
 
 ---
 
-## Setup — HuggingFace (Primary)
+## 🧩 Setup — HuggingFace (Primary)
 
 ### Step 1 — Install dependencies
 
@@ -93,20 +156,18 @@ pip3 install transformers accelerate huggingface_hub
 ### Step 2 — Configure HuggingFace Token
 
 1. Get your HuggingFace or Artifactory identity token
-2. Add it to `resources/config.ini`
+2. Add it to `resources/config.ini`:
 
-```properties
+```ini
 [ai]
 hf_token = your-artifactory-identity-token
 ```
 
 ### Step 3 — First Run (model download ~300MB)
 
-The model downloads automatically on first run from your configured `hf_endpoint` in `config.ini`.
+The model downloads automatically on first run from your configured `hf_endpoint`.
 
 **Default model:** `google/flan-t5-base`
-
-Other models available via `--model`:
 
 | Model | Size | Speed |
 |---|---|---|
@@ -116,9 +177,9 @@ Other models available via `--model`:
 
 ---
 
-## Setup — Ollama (Optional Fallback)
+## 🦙 Setup — Ollama (Optional Fallback)
 
-If HuggingFace is unavailable, install Ollama for local AI generation:
+If HuggingFace is unavailable, install Ollama for fully local AI generation:
 
 1. Download: **https://ollama.com/download/windows**
 2. Run `OllamaSetup.exe`
@@ -132,7 +193,9 @@ No code changes needed — the script detects Ollama automatically.
 
 ---
 
-### From a folder of documents (.docx / .pdf / .txt)
+## 📝 Generating Test Cases
+
+### From a folder of documents (`.docx` / `.pdf` / `.txt`)
 
 ```powershell
 python -m test.generate_tc_via_AI --input-folder "C:\path\to\docs" --folder "/Generated" --count 10
@@ -199,9 +262,7 @@ python -m test.generate_tc_via_AI --text "User should be able to login with vali
 
 ---
 
-## Import Generated Test Cases to Jira
-
-After generation, push to Jira Zephyr Scale:
+## 📤 Import Generated Test Cases to Jira
 
 ```powershell
 python -m test.import_testcases --file ..\resources\import_test_case.xlsx
@@ -209,7 +270,7 @@ python -m test.import_testcases --file ..\resources\import_test_case.xlsx
 
 ---
 
-## Other Scripts
+## 🛠️ Other Scripts
 
 ### Update existing test cases
 
@@ -236,8 +297,10 @@ python -m test.link_testcases_to_jira --file ..\resources\update_test_case.xlsx
 python -m test.update_test_cycle --file ..\resources\update_test_cycle.xlsx
 ```
 
-### Regenerate blank Excel input templates
+## 🤝 Contributing
 
-```powershell
-python src/create_excel_templates.py
-```
+Issues, feature requests, and PRs are welcome. If AITestCaseGen saves you time, consider giving it a ⭐ — it helps others discover the project.
+
+## 📜 License
+
+MIT License — see [LICENSE](LICENSE) for details.
