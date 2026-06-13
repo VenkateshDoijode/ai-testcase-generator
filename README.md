@@ -5,6 +5,22 @@ AI-powered test case management toolkit for Jira Zephyr Scale. Generate test cas
 
 ---
 
+## AI Test Case Generator
+
+The generator uses **HuggingFace Transformers** with models served from your configured Artifactory mirror or HuggingFace Hub directly.
+
+### AI Engine Priority
+
+The script automatically picks the best available engine:
+
+| Priority | Engine | Condition |
+|---|---|---|
+| 1 | **HuggingFace** | `transformers` installed + model downloadable |
+| 2 | **Ollama** | Ollama installed and running locally |
+| 3 | **Rule-based** | Always works — no AI needed |
+
+---
+
 ## Project Structure
 
 ```
@@ -71,22 +87,6 @@ automation_status = Manual
 ```
 
 > `config.ini` is in `.gitignore` — credentials are never committed to git.
-
----
-
-## AI Test Case Generator
-
-The generator uses **HuggingFace Transformers** with models served from your configured Artifactory mirror or HuggingFace Hub directly.
-
-### AI Engine Priority
-
-The script automatically picks the best available engine:
-
-| Priority | Engine | Condition |
-|---|---|---|
-| 1 | **HuggingFace** | `transformers` installed + model downloadable |
-| 2 | **Ollama** | Ollama installed and running locally |
-| 3 | **Rule-based** | Always works — no AI needed |
 
 ---
 
