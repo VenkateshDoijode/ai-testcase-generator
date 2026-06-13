@@ -1,7 +1,7 @@
 
 # AITestCaseGen
 
-AI-powered test case management toolkit for Jira Zephyr Scale — generate, import, update, delete, link, and Generate test cases using HuggingFace and Ollama AI models.
+AI-powered test case management toolkit for Jira Zephyr Scale. Generate test cases (positive, negative, edge) from Jira issues, Confluence pages, or documents using HuggingFace/Ollama LLMs — then import, update, delete, link, and manage execution cycles via the Zephyr Scale REST API.
 
 ---
 
