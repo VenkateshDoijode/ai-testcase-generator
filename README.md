@@ -20,34 +20,26 @@ The script automatically picks the best available engine:
 | 3 | **Rule-based** | Always works — no AI needed |
 
 ---
-
-## Project Structure
-
-```
-AITestCaseGen/
-├── resources/
-│   ├── config.ini                    # Jira credentials and settings
-│   ├── import_test_case.xlsx         # Input for import / output of AI generator
-│   ├── update_test_case.xlsx         # Input for update script
-│   ├── delete_Test_case.xlsx         # Input for delete script
-│   └── update_test_cycle.xlsx        # Input for test cycle update
-├── src/
-│   ├── main/
-│   │   ├── config.py                 # Reads config.ini
-│   │   └── jira_client.py            # Jira / Zephyr Scale REST API client
-│   ├── test/
-│   │   ├── generate_tc_via_AI.py     # AI test case generator
-│   │   ├── import_testcases.py       # Import test cases to Zephyr Scale
-│   │   ├── update_testcases.py       # Update existing test cases
-│   │   ├── delete_testcases.py       # Delete test cases
-│   │   ├── link_testcases_to_jira.py # Link test cases to Jira issues
-│   │   ├── export_test_cases.py      # Export test cases from Zephyr
-│   │   ├── project_info.py           # Display Jira project information
-│   │   ├── update_test_cycle.py      # Update test cycle execution results
-│   │   └── create_excel_templates.py # Generate blank Excel input templates
-└── requirements.txt
-```
-
+## Why This Is Different
+ 
+Most "AI test case generator" tools are tightly coupled to one model provider — if your API key runs out, the network is offline, or your org blocks cloud LLM calls, the tool simply stops working. This toolkit is built around **graceful degradation**:
+ 
+- **No hard dependency on a paid API.** HuggingFace models can run via your Artifactory mirror or locally; Ollama runs fully offline; and the rule-based engine guarantees the script *never fails outright*, even with zero AI infrastructure available.
+- **Enterprise-friendly by default.** Many QA teams work in locked-down environments without internet access to OpenAI/Anthropic APIs. This tool was designed for that reality — it works air-gapped via Ollama or an internal model mirror.
+- **End-to-end lifecycle, not just generation.** Most generator tools stop at "produce some test cases." This one generates *and* imports, updates, deletes, links to Jira, exports, and updates execution cycles — directly via the Zephyr Scale REST API, so generated cases don't sit in a spreadsheet waiting for manual entry.
+- **Multi-source input.** Jira issues, Confluence pages, folders of docs (.docx/.pdf/.txt), or raw text — all feed the same pipeline, so it fits into however your team actually documents requirements.
+## Comparison with Similar Approaches
+ 
+| Capability | This Toolkit | ChatGPT / Copy-Paste Prompting | Commercial Zephyr AI Add-ons |
+|---|---|---|---|
+| Works offline / air-gapped | ✅ via Ollama or local model | ❌ requires cloud API | ❌ usually cloud-only |
+| No paid API key required | ✅ rule-based fallback always works | ❌ needs ChatGPT/API subscription | ❌ licensed add-on cost |
+| Direct Zephyr Scale integration | ✅ generate → import → update → link → export, all via API | ❌ manual copy-paste into Zephyr | ✅ but locked to vendor's UI |
+| Multi-source input (Jira, Confluence, docs, text) | ✅ all in one pipeline | ⚠️ manual, one source at a time | ⚠️ varies, often limited |
+| Full test cycle execution updates | ✅ bulk update via CSV/Excel | ❌ not supported | ⚠️ vendor-dependent |
+| Open source / customizable | ✅ MIT-style, edit anything | N/A | ❌ closed source |
+| CI/CD friendly (CLI-based) | ✅ scriptable, no UI needed | ❌ manual workflow | ⚠️ varies |
+| Cost | Free | Subscription cost | License/subscription cost |
 ---
 
 ## Prerequisites
